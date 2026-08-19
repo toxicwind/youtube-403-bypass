@@ -10,16 +10,17 @@
 
 YouTube aggressively blocks yt-dlp with HTTP 403 errors. The default fallback (`android vr player` API) also fails:
 
-```
+```bash
+$ yt-dlp 'https://youtu.be/iQsu3Kz9NYo'
 [youtube] iQsu3Kz9NYo: Downloading android vr player API JSON
 [info] iQsu3Kz9NYo: Downloading 1 format(s): 398+251
 ERROR: unable to download video data: HTTP Error 403: Forbidden
 ```
 
-**Why:** YouTube requires:
-- **Browser cookies** (you must be logged into YouTube)
-- **PO tokens** (proof-of-origin tokens verifying you're a real browser)
-- **Correct user-agent** (matching your actual browser)
+**Why this happens:** YouTube requires three things to serve video:
+1. **Browser cookies** — you must be logged into YouTube
+2. **PO tokens** — proof-of-origin tokens that verify you're a real browser
+3. **Correct user-agent** — must match your actual browser
 
 ## The Solution
 
@@ -59,10 +60,11 @@ Extracted 106 cookies from chrome
 | Auto-detect Chrome | ✅ | ✅ | ✅ |
 | Auto-detect Brave | ✅ | ✅ | ✅ |
 | Auto-detect Edge | ✅ | ✅ | ✅ |
-| Auto-detect Firefox (dynamic profile) | ✅ | ✅ | ✅ |
+| Auto-detect Firefox (dynamic profile discovery) | ✅ | ✅ | ✅ |
 | Auto-detect Safari | ✅ | ⚠️ | ❌ |
 | Homebrew-safe (skips self-update) | ✅ | N/A | N/A |
 | Cleans previous install attempts | ✅ | ✅ | ✅ |
+| Cross-platform shell config | ✅ | ✅ | ✅ |
 
 ## Quick Start
 
@@ -70,7 +72,7 @@ Extracted 106 cookies from chrome
 curl -fsSL https://raw.githubusercontent.com/toxicwind/youtube-403-bypass/main/install.sh | bash
 ```
 
-Then:
+Then reload your shell and test:
 ```bash
 source ~/.zshrc   # or ~/.bashrc
 which yt-dlp      # should show: ~/.local/bin/yt-dlp
@@ -85,12 +87,13 @@ yt-dlp 'https://youtu.be/VIDEO_ID'
 
 ## How It Works
 
-1. **Detects browser profiles** on your system (Chrome, Brave, Edge, Firefox, Safari)
-2. **Creates wrapper script** at `~/.local/bin/yt-dlp`
-3. **Forces web client** — `--extractor-args youtube:player_client=web`
-4. **Injects cookies** — `--cookies-from-browser YOUR_BROWSER`
-5. **Generates PO token** via Deno + bgutil plugin
-6. **Sets user-agent** matching Chrome 126 on macOS
+1. **Detects browser profiles** — scans standard directories for Chrome, Brave, Edge, Firefox, Safari
+2. **Discovers Firefox profiles dynamically** — finds `*.default*` automatically
+3. **Creates wrapper script** at `~/.local/bin/yt-dlp`
+4. **Forces web client** — `--extractor-args youtube:player_client=web`
+5. **Injects cookies** — `--cookies-from-browser YOUR_BROWSER`
+6. **Generates PO token** via Deno + bgutil plugin
+7. **Sets user-agent** matching Chrome 126 on macOS
 
 ## Architecture
 
@@ -111,15 +114,6 @@ yt-dlp 'https://youtu.be/VIDEO_ID'
                     └──────────────────────┘
 ```
 
-## Known Issues
-
-```
-WARNING: [youtube] Invalid po_token configuration format.
-Expected "CLIENT.CONTEXT+PO_TOKEN", got "bgutil"
-```
-
-**This is cosmetic.** yt-dlp 2026.07.04 changed the expected format but the `bgutil` plugin still triggers and works. The video downloads successfully despite the warning.
-
 ## Browser Support
 
 ### Chrome / Brave / Edge
@@ -131,14 +125,23 @@ Auto-detected from standard profile directories. No configuration needed.
 Dynamic profile discovery finds your `*.default*` profile automatically:
 
 ```
-macOS:  ~/Library/Application Support/Firefox/Profiles/*.default*
-Linux:  ~/.mozilla/firefox/*.default*
+macOS:   ~/Library/Application Support/Firefox/Profiles/*.default*
+Linux:   ~/.mozilla/firefox/*.default*
 Windows: %APPDATA%\Mozilla\Firefox\Profiles\*.default*
 ```
 
 ### Safari
 
 Limited yt-dlp support. Recommended to use Chrome, Firefox, or Brave for best results.
+
+## Known Issues
+
+```
+WARNING: [youtube] Invalid po_token configuration format.
+Expected "CLIENT.CONTEXT+PO_TOKEN", got "bgutil"
+```
+
+**This is cosmetic.** yt-dlp 2026.07.04 changed the expected format but the `bgutil` plugin still triggers and works. The video downloads successfully despite the warning.
 
 ## Uninstall
 
