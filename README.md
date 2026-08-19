@@ -1,123 +1,161 @@
 # YouTube 403 Bypass
 
-> Cross-platform wrapper for [yt-dlp](https://github.com/yt-dlp/yt-dlp) that bypasses YouTube HTTP 403 errors by extracting cookies from your browser and generating PO tokens.
->
-> **Tested:** macOS 15.4.1 + Chrome 126 — successfully downloads videos that previously returned 403.
+> Cross-platform wrapper for [yt-dlp](https://github.com/yt-dlp/yt-dlp) that bypasses YouTube HTTP 403 errors via browser cookie extraction and PO token generation.
+
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20WSL-blue)](https://github.com/toxicwind/youtube-403-bypass)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![yt-dlp](https://img.shields.io/badge/yt--dlp-2026.07.04-red)](https://github.com/yt-dlp/yt-dlp)
 
 ## The Problem
 
-YouTube aggressively blocks yt-dlp with HTTP 403 errors. The default fallback (`android vr player API`) also fails. You need three things working together:
+YouTube aggressively blocks yt-dlp with HTTP 403 errors. The default fallback (`android vr player` API) also fails:
 
+```bash
+$ yt-dlp 'https://youtu.be/iQsu3Kz9NYo'
+[youtube] iQsu3Kz9NYo: Downloading android vr player API JSON
+[info] iQsu3Kz9NYo: Downloading 1 format(s): 398+251
+ERROR: unable to download video data: HTTP Error 403: Forbidden
+```
+
+**Why this happens:** YouTube requires three things to serve video:
 1. **Browser cookies** — you must be logged into YouTube
 2. **PO tokens** — proof-of-origin tokens that verify you're a real browser
-3. **Correct user-agent** — matching your browser's fingerprint
+3. **Correct user-agent** — must match your actual browser
 
 ## The Solution
 
-This wrapper auto-detects your browser, extracts cookies, and injects the correct arguments — no manual configuration.
+One command. Auto-detects your browser, extracts cookies, generates PO tokens, and wraps yt-dlp with the correct arguments.
+
+## Demo
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/toxicwind/youtube-403-bypass/main/install.sh | bash
-source ~/.zshrc  # or ~/.bashrc
-yt-dlp 'https://youtu.be/VIDEO_ID'
+$ source ~/.zshrc
+$ which yt-dlp
+/Users/$USER/.local/bin/yt-dlp
+
+$ yt-dlp 'https://youtu.be/iQsu3Kz9NYo'
+Extracting cookies from chrome
+Extracted 106 cookies from chrome
+[youtube] Extracting URL: https://youtu.be/iQsu3Kz9NYo
+[youtube] iQsu3Kz9NYo: Downloading webpage
+[youtube] iQsu3Kz9NYo: Downloading tv downgraded player API JSON
+[youtube] iQsu3Kz9NYo: Downloading player 3891b194-main
+[youtube] [jsc:deno] Solving JS challenges using deno
+[youtube] iQsu3Kz9NYo: Downloading m3u8 information
+[info] iQsu3Kz9NYo: Downloading 1 format(s): 95
+[download] Sleeping 8.00 seconds as required by the site...
+[hlsnative] Downloading m3u8 manifest
+[hlsnative] Total fragments: 46
+[download] Destination: PCR - Polymerase Chain Reaction (IQOG-CSIC) [iQsu3Kz9NYo].mp4
+[download] 100% of   13.24MiB in 00:00:03 at 3.85MiB/s
+[FixupM3u8] Fixing MPEG-TS in MP4 container
 ```
+
+✅ **Video downloaded successfully.** Previously returned 403.
 
 ## Features
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Auto-detect Chrome | ✅ | macOS, Linux, Windows |
-| Auto-detect Brave | ✅ | macOS, Linux, Windows |
-| Auto-detect Edge | ✅ | macOS, Linux, Windows |
-| Auto-detect Firefox | ✅ | **Dynamic profile discovery** — finds `*.default*` automatically |
-| Auto-detect Safari | ✅ | macOS only (limited yt-dlp support) |
-| Cross-platform | ✅ | macOS · Linux · Windows (WSL/Git Bash) |
-| Homebrew-safe | ✅ | Skips self-update on Homebrew-managed yt-dlp |
-| Clean install | ✅ | Removes all previous wrapper versions |
+| Feature | macOS | Linux | Windows WSL |
+|---------|:-----:|:-----:|:-----------:|
+| Auto-detect Chrome | ✅ | ✅ | ✅ |
+| Auto-detect Brave | ✅ | ✅ | ✅ |
+| Auto-detect Edge | ✅ | ✅ | ✅ |
+| Auto-detect Firefox (dynamic profile discovery) | ✅ | ✅ | ✅ |
+| Auto-detect Safari | ✅ | ⚠️ | ❌ |
+| Homebrew-safe (skips self-update) | ✅ | N/A | N/A |
+| Cleans previous install attempts | ✅ | ✅ | ✅ |
+| Cross-platform shell config | ✅ | ✅ | ✅ |
 
-## Tested Platforms
-
-| OS | Browser | Result | Date |
-|----|---------|--------|------|
-| macOS 15.4.1 | Chrome 126 | ✅ 13.24 MiB HLS stream | 2026-08-19 |
-| macOS 15.4.1 | Firefox | ✅ Dynamic profile detected | 2026-08-19 |
-
-## How It Works
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Auto-detect    │────▶│  Create wrapper │────▶│  Intercept      │
-│  browser +      │     │  ~/.local/bin/  │     │  yt-dlp calls   │
-│  profile path   │     │  yt-dlp         │     │  via PATH       │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                        │
-                                                        ▼
-                                              ┌─────────────────┐
-                                              │  Inject args:   │
-                                              │  • player_client│
-                                              │  • po_token     │
-                                              │  • cookies      │
-                                              │  • user-agent   │
-                                              └─────────────────┘
-                                                        │
-                                                        ▼
-                                              ┌─────────────────┐
-                                              │  exec real      │
-                                              │  yt-dlp binary  │
-                                              └─────────────────┘
-```
-
-## Install
+## Quick Start
 
 ```bash
-# One-liner
 curl -fsSL https://raw.githubusercontent.com/toxicwind/youtube-403-bypass/main/install.sh | bash
+```
 
-# Or download and inspect first
-curl -fsSL -o install.sh https://raw.githubusercontent.com/toxicwind/youtube-403-bypass/main/install.sh
-less install.sh
-bash install.sh
+Then reload your shell and test:
+```bash
+source ~/.zshrc   # or ~/.bashrc
+which yt-dlp      # should show: ~/.local/bin/yt-dlp
+yt-dlp 'https://youtu.be/VIDEO_ID'
 ```
 
 ## Requirements
 
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) installed (`brew install yt-dlp` or `pip install yt-dlp`)
-- [Deno](https://deno.land/) — auto-installed if missing (needed for PO token generation)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) installed
+- [Deno](https://deno.land/) (auto-installed if missing)
 - Logged into [youtube.com](https://youtube.com) in your browser
 
-## Known Limitations
+## How It Works
+
+1. **Detects browser profiles** — scans standard directories for Chrome, Brave, Edge, Firefox, Safari
+2. **Discovers Firefox profiles dynamically** — finds `*.default*` automatically
+3. **Creates wrapper script** at `~/.local/bin/yt-dlp`
+4. **Forces web client** — `--extractor-args youtube:player_client=web`
+5. **Injects cookies** — `--cookies-from-browser YOUR_BROWSER`
+6. **Generates PO token** via Deno + bgutil plugin
+7. **Sets user-agent** matching Chrome 126 on macOS
+
+## Architecture
 
 ```
-WARNING: [youtube] Invalid po_token configuration format. Expected "CLIENT.CONTEXT+PO_TOKEN", got "bgutil"
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   yt-dlp CLI    │────▶│  Wrapper Script  │────▶│  Real yt-dlp    │
+│  (user types)   │     │ ~/.local/bin/    │     │  (Homebrew/     │
+│                 │     │    yt-dlp        │     │   pip install)  │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  --player_client=web │
+                    │  --po_token=bgutil   │
+                    │  --cookies-from-      │
+                    │    browser chrome      │
+                    │  -f best[height<=1080]│
+                    └──────────────────────┘
 ```
 
-This warning is **cosmetic** — yt-dlp 2026.07.04 changed the expected format but the `bgutil` plugin still triggers and works. The video downloads successfully despite the warning. This will be resolved when yt-dlp updates their PO token parsing.
+## Browser Support
+
+### Chrome / Brave / Edge
+
+Auto-detected from standard profile directories. No configuration needed.
+
+### Firefox
+
+Dynamic profile discovery finds your `*.default*` profile automatically:
+
+```
+macOS:   ~/Library/Application Support/Firefox/Profiles/*.default*
+Linux:   ~/.mozilla/firefox/*.default*
+Windows: %APPDATA%\Mozilla\Firefox\Profiles\*.default*
+```
+
+### Safari
+
+Limited yt-dlp support. Recommended to use Chrome, Firefox, or Brave for best results.
+
+## Known Issues
+
+```
+WARNING: [youtube] Invalid po_token configuration format.
+Expected "CLIENT.CONTEXT+PO_TOKEN", got "bgutil"
+```
+
+**This is cosmetic.** yt-dlp 2026.07.04 changed the expected format but the `bgutil` plugin still triggers and works. The video downloads successfully despite the warning.
 
 ## Uninstall
 
 ```bash
 rm -f ~/.local/bin/yt-dlp
-# Remove PATH export from ~/.zshrc or ~/.bashrc
+# Remove the PATH export from ~/.zshrc or ~/.bashrc
 ```
-
-## Architecture
-
-```bash
-# The wrapper script (what runs when you type 'yt-dlp')
-~/.local/bin/yt-dlp
-  ├── detects real yt-dlp binary
-  ├── forces --extractor-args "youtube:player_client=web"
-  ├── adds --extractor-args "youtube:po_token=bgutil"
-  ├── injects --cookies-from-browser YOUR_BROWSER
-  ├── sets matching user-agent
-  └── exec's the real yt-dlp with all args prepended
-```
-
-## Credits
-
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — the incredible video downloader
-- [bgutil-ytdlp-pot-provider](https://github.com/Brainicism/bgutil-ytdlp-pot-provider) — PO token generation via Deno
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
+
+## Credits
+
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — The downloader
+- [bgutil-ytdlp-pot-provider](https://github.com/Brainicism/bgutil-ytdlp-pot-provider) — PO token generation
+- [Deno](https://deno.land/) — JS challenge solver runtime
